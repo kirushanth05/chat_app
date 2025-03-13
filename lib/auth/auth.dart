@@ -1,5 +1,8 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
+
+final _firebaseAuthInstance = FirebaseAuth.instance;
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -15,7 +18,7 @@ class _AuthScreenState extends State<AuthScreen> {
   String enteredEmail = '';
   String enteredPassword = '';
 
-  void _submit() {
+  void _submit() async {
     bool isValid = _form.currentState!.validate();
 
     if (!isValid) {
@@ -23,6 +26,31 @@ class _AuthScreenState extends State<AuthScreen> {
     }
 
     _form.currentState!.save();
+
+    var response;
+
+    try {
+      if (isLogin) {
+        response = await _firebaseAuthInstance.signInWithEmailAndPassword(
+          email: enteredEmail,
+          password: enteredPassword,
+        );
+      } else {
+        response = await _firebaseAuthInstance.createUserWithEmailAndPassword(
+          email: enteredEmail,
+          password: enteredPassword,
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message!)));
+    } catch (errorrrrr) {
+      // print('got an error $errorrrrr');
+    } finally {
+      // print('the response $response');
+    }
   }
 
   @override
@@ -44,7 +72,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
                 Image.asset('assets/images/login-smart-art.jpg'),
                 Card(
-                  color: Colors.white,
+                  // color: Colors.white,
                   margin: EdgeInsets.all(16),
                   child: Padding(
                     padding: const EdgeInsets.all(8.0),
@@ -81,7 +109,9 @@ class _AuthScreenState extends State<AuthScreen> {
                               ),
                               obscureText: true,
                               validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
+                                if (value == null ||
+                                    value.trim().isEmpty ||
+                                    value.length < 6) {
                                   return 'Password can\'t be empty!';
                                 }
                                 return null;
