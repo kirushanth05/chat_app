@@ -1,6 +1,9 @@
+import 'package:chat_app/widgets/user_image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
+import 'dart:io';
 
 final _firebaseAuthInstance = FirebaseAuth.instance;
 
@@ -17,29 +20,39 @@ class _AuthScreenState extends State<AuthScreen> {
   bool isLogin = true;
   String enteredEmail = '';
   String enteredPassword = '';
+  File? pickedUserImage;
 
   void _submit() async {
     bool isValid = _form.currentState!.validate();
 
-    if (!isValid) {
+    if (!isValid || !isLogin && pickedUserImage == null) {
       return;
     }
 
     _form.currentState!.save();
 
-    var response;
+    // var response;
 
     try {
       if (isLogin) {
-        response = await _firebaseAuthInstance.signInWithEmailAndPassword(
+        final response = await _firebaseAuthInstance.signInWithEmailAndPassword(
           email: enteredEmail,
           password: enteredPassword,
         );
       } else {
-        response = await _firebaseAuthInstance.createUserWithEmailAndPassword(
-          email: enteredEmail,
-          password: enteredPassword,
-        );
+        final response = await _firebaseAuthInstance
+            .createUserWithEmailAndPassword(
+              email: enteredEmail,
+              password: enteredPassword,
+            );
+
+        final storageRef = await FirebaseStorage.instance
+            .ref()
+            .child('user_images')
+            .child('${response.user!.uid}.jpg');
+
+        await storageRef.putFile(pickedUserImage!);
+        // upload the image from the image picker and store it in firebase storage
       }
     } on FirebaseAuthException catch (e) {
       ScaffoldMessenger.of(context).clearSnackBars();
@@ -81,6 +94,14 @@ class _AuthScreenState extends State<AuthScreen> {
                       child: SingleChildScrollView(
                         child: Column(
                           children: [
+                            if (!isLogin) ...[
+                              UserImagePicker(
+                                onImagePicked: (image) {
+                                  pickedUserImage = image;
+                                },
+                              ),
+                              const Gap(16),
+                            ],
                             // email input
                             TextFormField(
                               autocorrect: false,
